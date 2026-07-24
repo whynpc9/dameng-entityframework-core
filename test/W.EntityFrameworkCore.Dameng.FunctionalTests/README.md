@@ -1,22 +1,18 @@
-# Dameng functional tests
+# 达梦功能测试
 
-These tests target an existing Dameng database and current user schema. They do
-not create or drop a database, user, or schema. Each storage fixture creates
-uniquely named objects and drops those exact objects in `finally`; DDL cleanup
-never relies on transaction rollback because Dameng DDL implicitly commits.
+这些测试面向现有达梦数据库和当前用户模式，不会创建或删除数据库、用户或模式。
+每个存储夹具都会创建名称唯一的对象，并在 `finally` 中删除这些精确对象；
+由于达梦 DDL 会隐式提交，DDL 清理绝不依赖事务回滚。
 
-Set the complete connection string only in the process environment:
+仅在进程环境中设置完整连接字符串：
 
 ```bash
-export DAMENG_TEST_CONNECTION_STRING='<complete DM.DmProvider connection string>'
+export DAMENG_TEST_CONNECTION_STRING='<完整的 DM.DmProvider 连接字符串>'
 dotnet test test/W.EntityFrameworkCore.Dameng.FunctionalTests/W.EntityFrameworkCore.Dameng.FunctionalTests.csproj
 ```
 
-Without `DAMENG_TEST_CONNECTION_STRING`, every database fact is reported as an
-explicit environment skip. That is suitable for offline work but is not
-real-database or release evidence.
+缺少 `DAMENG_TEST_CONNECTION_STRING` 时，每项数据库事实测试都会报告为明确的环境跳过。
+这适用于离线工作，但不能作为真实数据库或发布证据。
 
-The reference environment is Dameng 8.1.5.60 with `DM.DmProvider`
-8.3.1.47463. It is an evidence point, not a minimum-version guarantee.
-Credentials and connection details must never be committed, logged, or copied
-into test data.
+参考环境为达梦 8.1.5.60 和 `DM.DmProvider` 8.3.1.47463。
+它只是一个证据点，不构成最低版本保证。绝不能提交、记录或将凭据和连接详情复制到测试数据中。

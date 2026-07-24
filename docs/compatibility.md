@@ -1,110 +1,101 @@
-# Compatibility and verification
+# 兼容性与验证
 
-## Evidence vocabulary
+## 证据术语
 
-This matrix records the repository baseline as of 2026-07-24.
+本矩阵记录截至 2026-07-24 的仓库基线。
 
-- **Real verified**: an automated provider test passed against the reference
-  Dameng 8.1.5.60 server.
-- **Unit verified**: deterministic provider tests cover SQL, metadata, or
-  service behavior without a server. This is not runtime proof.
-- **Partial**: useful paths are implemented, but the supported EF or Dameng
-  surface is deliberately narrower than the area name suggests.
-- **Driver-limited**: the provider exposes the EF API, but the current
-  `DM.DmProvider` behavior limits its semantics or performance.
-- **Not implemented**: callers must not depend on this capability.
-- **Unsupported**: the provider intentionally rejects the shape or cannot
-  provide the semantics EF expects.
+- **真实环境已验证**：自动化提供程序测试已在参考达梦 8.1.5.60 服务器上通过。
+- **单元级已验证**：确定性的提供程序测试在无服务器环境下覆盖 SQL、元数据或服务行为。
+  这不属于运行时证明。
+- **部分支持**：已实现实用路径，但受支持的 EF 或达梦范围有意小于该领域名称所暗示的范围。
+- **受驱动程序限制**：提供程序公开了 EF API，但当前 `DM.DmProvider` 的行为限制其语义或性能。
+- **未实现**：调用方不得依赖此能力。
+- **不支持**：提供程序有意拒绝该结构，或无法提供 EF 所需的语义。
 
-The reference server and driver are an evidence point, not a minimum-version
-guarantee. A source file or generated SQL assertion alone does not qualify as
-real verification.
+参考服务器和驱动程序只是一个证据点，不构成最低版本保证。仅有源文件或生成 SQL
+断言不能被认定为真实环境验证。
 
-## Capability matrix
+## 能力矩阵
 
-| Area | State | Verified scope and boundary |
+| 领域 | 状态 | 已验证范围与边界 |
 | --- | --- | --- |
-| .NET 10 connection | Real verified | `DM.DmProvider` 8.3.1.47463 loads its `net9.0` asset and connects from a .NET 10 process |
-| Public configuration | Unit verified | Six `UseDameng(...)` overloads cover typed/untyped builders, connection strings, and caller-owned/EF-owned `DbConnection`; command timeout, migrations assembly, and retry configuration are wired |
-| Identifiers and parameters | Real verified | Double-quoted identifiers and `:name` parameters; `@name` is not emitted |
-| Scalar/fromless query | Server probe + unit verified | The server accepts `SELECT` without `FROM`; provider SQL generation and boolean value/search-condition conversion have deterministic tests |
-| Filtering and pagination | Real verified | Parameterized predicates, ordering, `Skip`/`Take`, `OFFSET … FETCH`, `Any`, tenant and soft-delete filters |
-| String translation | Partial / Real verified subset | Real execution covers `Trim`, `Length`, `Contains`, `StartsWith`, and `EndsWith`; generated SQL for `IndexOf`, `Replace`, case conversion, substring, and other trim shapes has unit coverage |
-| Date/time and GUID translation | Partial / Real verified subset | Real execution covers year/month extraction, integral `AddDays`, and `Guid.NewGuid()`/`NEWID()`; other implemented members and integral `DATEADD` units have generated-SQL tests |
-| Fractional `DateTime.Add*` | Unsupported where lossless translation is unavailable | Parameterized or non-integral double arguments are not silently truncated; EF reports an untranslated expression |
-| Tracked CRUD | Real verified | Unicode insert/read/update/delete, nulls, converters, identity key readback, and affected-row reporting |
-| Identity columns | Real verified / Unit verified facets | Generated keys and `SCOPE_IDENTITY()` readback execute on the server; conventions and explicit seed/increment have unit coverage |
-| Sequences | Real verified | `sequence.NEXTVAL` defaults and `sequence.CURRVAL` generated-key readback; standard `NEXT VALUE FOR` is not used |
-| Optimistic concurrency | Real verified | A stale concurrency token throws through the driver's verified `SQL%ROWCOUNT` result protocol |
-| `ExecuteUpdate` / `ExecuteDelete` | Real verified | Affected-row counts and persisted boolean/converted-value updates |
-| Modification batching | Driver-limited | The driver has no provider-specific `DbBatch`; the provider uses `SingularModificationCommandBatch` |
-| Common scalar mappings | Real verified | Signed integers, facet-free decimal plus decimal(38,20), bool, GUID, Unicode/CJK, nullable values, `DateOnly`, microsecond `TimeOnly`, and precision-7 `DateTime` |
-| `DateTimeOffset` | Real verified | `DATETIME(7) WITH TIME ZONE`; precision-7 round trip and provider text readback preserve the original offset, including `+08:00` |
-| `TimeSpan` | Real verified | `INTERVAL DAY(9) TO SECOND(6)`, including exact positive and negative values beyond two-digit days; literals preserve the mapped day/fractional precision and lossy ticks are rejected |
-| Binary and LOB mappings | Real verified / Partial query semantics | `VARBINARY`, 40 KiB `BLOB`, and 40 KiB Unicode `NCLOB` round trips. Parameter equality through `TEXT_EQUAL`/`BLOB_EQUAL` and NCLOB `INSTR` search execute on the reference server; ordering, grouping, distinct, and distinct set operations fail early. String-search functions remain subject to `CLOB_MAX_CALC_LEN`. Keys/indexes require bounded inline types, and page/row configuration controls usable inline length |
-| JSON storage | Real verified / Partial | `JsonElement` round trips through `JSON`; a broad JSON query/operator translation surface is not claimed |
-| Unsigned integers and facet boundaries | Unit verified | Range-preserving converters and store mappings are covered; broad real-server boundary data is not yet a release claim |
-| Transactions | Real verified | EF transaction commit/rollback behavior is exercised |
-| Savepoints | Real verified | Create and rollback-to-savepoint work on the reference driver/server despite the driver's base capability flag |
-| Isolation levels | Partial | Server probes established a narrower accepted set, but the provider does not yet expose a validated isolation-level compatibility contract |
-| Retry execution strategy | Unit verified | Conservative `DmException.Number` classification and bounded settings; no real fault-injection suite currently proves recovery for every code |
-| DDL transactionality | Unsupported as an atomic migration | Dameng DDL implicitly commits; generated DDL commands suppress EF transactions |
-| Physical database create/delete | Unsupported | `Create`/`Delete` throw; connect to an existing database and manage objects in the current schema |
-| Migrations DDL | Partial / Real verified subset | Real tests cover table, identity, sequence, index, virtual computed column, and cleanup; unit tests cover seed-data SQL, additional relational constraints, and explicit rejection paths |
-| Migration history | Real verified | Existence, create-if-not-exists, insert, query, and delete paths |
-| Migration locking | Real verified / server-specific | Uses `DBMS_LOCK`; verified on the reference non-MPP server. Dameng MPP does not provide the same baseline |
-| Idempotent migration scripts | Real verified / Partial | Generated commands use escaped `EXECUTE IMMEDIATE` inside migration-history DMSQL guards. Repeated execution, Unicode, quotes, identity seed/session commands, and history insertion pass on the reference server. Dynamic command literals whose escaped UTF-8 representation exceeds 32767 bytes fail early and must be split |
-| Stored computed columns | Unsupported | Virtual computed columns are supported; stored computed columns are rejected |
-| Filtered indexes | Unsupported | Provider rejects a migration index filter instead of emitting another database's syntax |
-| Identity alteration | Unsupported | Adding/removing `IDENTITY`, or changing its seed/increment with `ALTER COLUMN`, is rejected; recreate the column |
-| Cross-schema rename | Unsupported | Table/sequence rename cannot be used to move an object between schemas |
-| TPT/TPC value generation | Unit verified / Partial | TPT applies identity/sequence generation only to the root table. TPC identity across multiple concrete tables is rejected because it can collide; a shared Dameng sequence is supported instead |
-| Schema creation and uncommon DDL | Partial | Only operations represented in provider tests are claimed; do not infer coverage for every EF migration operation |
-| Design-time migration code generation | Unit verified / Partial | Provider and annotation code generators emit `UseDameng` and Dameng value-generation APIs; end-to-end `dotnet ef` coverage remains limited |
-| Reverse engineering | Not implemented | No `IDatabaseModelFactory`; `dotnet ef dbcontext scaffold` is outside the current provider surface |
-| EF relational specification conformance | Not claimed | The specification project contains four provider-owned smoke tests and uses EF test utilities, but inherits no upstream relational `*TestBase` suite |
-| Trimming / NativeAOT | Unverified | No trimming, compiled-model optimization, or NativeAOT compatibility claim is made for the provider or the current driver |
-| Async I/O and cancellation | Driver-limited | The tested driver asset falls back to synchronous ADO.NET implementations; EF async APIs remain available but cannot promise non-blocking I/O or prompt cancellation |
-| Connection timeout | Unverified driver setting | EF `CommandTimeout` is seconds. This repository does not assert a driver connection-string timeout keyword or unit |
+| .NET 10 连接 | 真实环境已验证 | `DM.DmProvider` 8.3.1.47463 加载其 `net9.0` 资产，并从 .NET 10 进程建立连接 |
+| 公共配置 | 单元级已验证 | 六个 `UseDameng(...)` 重载覆盖泛型/非泛型构建器、连接字符串，以及由调用方/EF 拥有的 `DbConnection`；命令超时、迁移程序集和重试配置均已接通 |
+| 标识符与参数 | 真实环境已验证 | 使用双引号引用标识符和 `:name` 参数；不生成 `@name` |
+| 标量/无 FROM 查询 | 服务器探测 + 单元级已验证 | 服务器接受不含 `FROM` 的 `SELECT`；提供程序 SQL 生成和布尔值/搜索条件转换具有确定性测试 |
+| 筛选与分页 | 真实环境已验证 | 参数化谓词、排序、`Skip`/`Take`、`OFFSET … FETCH`、`Any`、租户和软删除筛选器 |
+| 字符串翻译 | 部分支持 / 子集真实环境已验证 | 真实执行覆盖 `Trim`、`Length`、`Contains`、`StartsWith` 和 `EndsWith`；`IndexOf`、`Replace`、大小写转换、子字符串及其他 trim 结构的生成 SQL 有单元测试覆盖 |
+| 日期/时间与 GUID 翻译 | 部分支持 / 子集真实环境已验证 | 真实执行覆盖年/月提取、整数 `AddDays` 和 `Guid.NewGuid()`/`NEWID()`；其他已实现成员和整数 `DATEADD` 单位具有生成 SQL 测试 |
+| 小数 `DateTime.Add*` | 无法无损翻译时不支持 | 参数化或非整数 double 参数不会被静默截断；EF 会报告无法翻译的表达式 |
+| 跟踪式 CRUD | 真实环境已验证 | Unicode 插入/读取/更新/删除、null、转换器、标识列键回读和受影响行报告 |
+| 标识列 | 真实环境已验证 / 部分方面单元级已验证 | 生成的键及通过 `SCOPE_IDENTITY()` 回读已在服务器执行；约定和显式种子/增量有单元测试覆盖 |
+| 序列 | 真实环境已验证 | `sequence.NEXTVAL` 默认值和通过 `sequence.CURRVAL` 回读生成的键；不使用标准 `NEXT VALUE FOR` |
+| 乐观并发 | 真实环境已验证 | 过期并发标记通过驱动程序已验证的 `SQL%ROWCOUNT` 结果协议抛出异常 |
+| `ExecuteUpdate` / `ExecuteDelete` | 真实环境已验证 | 受影响行数以及持久化的布尔值/转换值更新 |
+| 修改批处理 | 受驱动程序限制 | 驱动程序没有提供程序专用的 `DbBatch`；提供程序使用 `SingularModificationCommandBatch` |
+| 常见标量映射 | 真实环境已验证 | 有符号整数、无分面 decimal 与 decimal(38,20)、bool、GUID、Unicode/CJK、可空值、`DateOnly`、微秒精度 `TimeOnly` 和精度为 7 的 `DateTime` |
+| `DateTimeOffset` | 真实环境已验证 | `DATETIME(7) WITH TIME ZONE`；精度为 7 的往返和提供程序文本回读保留原始偏移量，包括 `+08:00` |
+| `TimeSpan` | 真实环境已验证 | `INTERVAL DAY(9) TO SECOND(6)`，包括超过两位天数的精确正值和负值；字面量保留映射的天/小数秒精度，并拒绝造成信息损失的 tick |
+| 二进制与 LOB 映射 | 真实环境已验证 / 查询语义部分支持 | `VARBINARY`、40 KiB `BLOB` 和 40 KiB Unicode `NCLOB` 往返。通过 `TEXT_EQUAL`/`BLOB_EQUAL` 进行参数相等比较，以及通过 NCLOB `INSTR` 搜索，均已在参考服务器执行；排序、分组、distinct 和 distinct 集合操作会提前失败。字符串搜索函数仍受 `CLOB_MAX_CALC_LEN` 约束。键/索引需要有界行内类型，可用行内长度由页面/行配置决定 |
+| JSON 存储 | 真实环境已验证 / 部分支持 | `JsonElement` 通过 `JSON` 往返；不声称支持广泛的 JSON 查询/运算符翻译 |
+| 无符号整数与分面边界 | 单元级已验证 | 保持范围的转换器和存储映射已有覆盖；尚未将广泛的真实服务器边界数据作为发布声明 |
+| 事务 | 真实环境已验证 | 已验证 EF 事务提交/回滚行为 |
+| 保存点 | 真实环境已验证 | 尽管驱动程序的基础能力标志不支持，参考驱动程序/服务器仍可创建保存点并回滚到保存点 |
+| 隔离级别 | 部分支持 | 服务器探测确定了范围较窄的可接受集合，但提供程序尚未公开已验证的隔离级别兼容性契约 |
+| 重试执行策略 | 单元级已验证 | 保守的 `DmException.Number` 分类和有界设置；当前没有真实故障注入套件证明每个错误码都可恢复 |
+| DDL 事务性 | 不支持原子迁移 | 达梦 DDL 会隐式提交；生成的 DDL 命令会禁用 EF 事务 |
+| 创建/删除物理数据库 | 不支持 | `Create`/`Delete` 会抛出异常；应连接到现有数据库并管理当前模式中的对象 |
+| 迁移 DDL | 部分支持 / 子集真实环境已验证 | 真实测试覆盖表、标识列、序列、索引、虚拟计算列和清理；单元测试覆盖种子数据 SQL、其他关系约束和显式拒绝路径 |
+| 迁移历史记录 | 真实环境已验证 | 存在性、按需创建、插入、查询和删除路径 |
+| 迁移锁 | 真实环境已验证 / 服务器特定 | 使用 `DBMS_LOCK`；已在参考非 MPP 服务器上验证。达梦 MPP 不提供相同基线 |
+| 幂等迁移脚本 | 真实环境已验证 / 部分支持 | 生成的命令在迁移历史记录 DMSQL 守卫中使用已转义的 `EXECUTE IMMEDIATE`。重复执行、Unicode、引号、标识列种子/会话命令和历史记录插入均在参考服务器通过。转义后 UTF-8 表示超过 32767 字节的动态命令字面量会提前失败，必须拆分 |
+| 存储计算列 | 不支持 | 支持虚拟计算列；拒绝存储计算列 |
+| 筛选索引 | 不支持 | 提供程序会拒绝迁移索引筛选器，而不是生成其他数据库的语法 |
+| 修改标识列 | 不支持 | 拒绝通过 `ALTER COLUMN` 添加/移除 `IDENTITY`，或修改其种子/增量；应重新创建该列 |
+| 跨模式重命名 | 不支持 | 不能通过表/序列重命名将对象移动到其他模式 |
+| TPT/TPC 值生成 | 单元级已验证 / 部分支持 | TPT 仅向根表应用标识列/序列生成。由于多个具体表可能发生冲突，因此拒绝 TPC 标识列；可改用共享达梦序列 |
+| 模式创建与不常见 DDL | 部分支持 | 仅声明支持提供程序测试所覆盖的操作；不得推断已覆盖所有 EF 迁移操作 |
+| 设计时迁移代码生成 | 单元级已验证 / 部分支持 | 提供程序和注解代码生成器会生成 `UseDameng` 和达梦值生成 API；端到端 `dotnet ef` 覆盖仍然有限 |
+| 反向工程 | 未实现 | 没有 `IDatabaseModelFactory`；`dotnet ef dbcontext scaffold` 不在当前提供程序范围内 |
+| EF 关系数据库规范一致性 | 未声明 | 规范测试项目包含四项提供程序自有冒烟测试并使用 EF 测试工具，但不继承上游关系数据库 `*TestBase` 测试套件 |
+| 裁剪 / NativeAOT | 未验证 | 不对提供程序或当前驱动程序的裁剪、编译模型优化或 NativeAOT 兼容性作任何声明 |
+| 异步 I/O 与取消 | 受驱动程序限制 | 已测试的驱动程序资产会回退到同步 ADO.NET 实现；EF 异步 API 仍然可用，但无法保证非阻塞 I/O 或及时取消 |
+| 连接超时 | 未验证的驱动程序设置 | EF `CommandTimeout` 的单位为秒。本仓库不对驱动程序连接字符串的超时关键字或单位作任何断言 |
 
-Final 2026-07-24 validation snapshot:
+最终的 2026-07-24 验证快照：
 
-- locked restore: succeeded;
-- Release build: 0 warnings, 0 errors;
-- deterministic unit suite: 165/165 passed;
-- reference-server functional suite: 33/33 passed;
-- provider-owned relational smoke suite: 4/4 passed;
-- standard `dotnet format --verify-no-changes`: passed;
-- Release package creation: passed.
+- 锁定模式还原：成功；
+- Release 构建：0 个警告，0 个错误；
+- 确定性单元测试套件：165/165 通过；
+- 参考服务器功能测试套件：33/33 通过；
+- 提供程序自有关系数据库冒烟测试套件：4/4 通过；
+- 标准 `dotnet format --verify-no-changes`：通过；
+- Release 包创建：通过。
 
-## Real-database test contract
+## 真实数据库测试契约
 
-Real-database tests receive one secret environment variable:
+真实数据库测试接收一个机密环境变量：
 
 ```text
 DAMENG_TEST_CONNECTION_STRING
 ```
 
-It contains the complete `DM.DmProvider` connection string. Tests and logs must
-not print, snapshot, or commit it. The configured account must be able to
-create/drop tables, indexes, constraints, and sequences in its own schema,
-execute DML, use transactions/savepoints, access migration history, and invoke
-`DBMS_LOCK`. It does not need permission to create or delete a physical
-database.
+该变量包含完整的 `DM.DmProvider` 连接字符串。测试和日志不得打印、快照记录或提交它。
+配置的账户必须能够在自己的模式中创建/删除表、索引、约束和序列，执行 DML，使用
+事务/保存点，访问迁移历史记录以及调用 `DBMS_LOCK`。该账户不需要创建或删除物理数据库的权限。
 
-Test isolation rules:
+测试隔离规则：
 
-1. Generate a unique, recognizable prefix for every object set.
-2. Restrict discovery and cleanup to that prefix and current user schema.
-3. Drop exact objects in `finally`, including after assertion failure.
-4. Never rely on rollback for DDL cleanup because DDL implicitly commits.
-5. Do not persist host names, usernames, passwords, or a complete connection
-   string in test output.
+1. 为每组对象生成唯一、可识别的前缀。
+2. 将发现和清理限制在该前缀及当前用户模式内。
+3. 在 `finally` 中删除精确对象，包括断言失败之后。
+4. 绝不依赖回滚清理 DDL，因为 DDL 会隐式提交。
+5. 不得在测试输出中持久化主机名、用户名、密码或完整连接字符串。
 
-Run the database projects directly:
+直接运行数据库测试项目：
 
 ```bash
-export DAMENG_TEST_CONNECTION_STRING='<complete connection string>'
+export DAMENG_TEST_CONNECTION_STRING='<完整连接字符串>'
 
 dotnet test \
   test/W.EntityFrameworkCore.Dameng.FunctionalTests/W.EntityFrameworkCore.Dameng.FunctionalTests.csproj
@@ -113,29 +104,27 @@ dotnet test \
   test/W.EntityFrameworkCore.Dameng.Specification.Tests/W.EntityFrameworkCore.Dameng.Specification.Tests.csproj
 ```
 
-Without the variable, database facts are explicitly skipped. Skips are useful
-for offline development but are not release evidence.
+缺少该变量时，数据库事实测试会被明确跳过。跳过测试对离线开发有帮助，但不能作为发布证据。
 
-## Specification-test boundary
+## 规范测试边界
 
-`W.EntityFrameworkCore.Dameng.Specification.Tests` references
-`Microsoft.EntityFrameworkCore.Relational.Specification.Tests` for shared test
-utilities. Its current tests are provider-owned smoke scenarios for:
+`W.EntityFrameworkCore.Dameng.Specification.Tests` 引用
+`Microsoft.EntityFrameworkCore.Relational.Specification.Tests` 以使用共享测试工具。
+其当前测试是提供程序自有的冒烟场景，覆盖：
 
-- provider/test-store wiring;
-- scalar round trips;
-- parameterized query/order/projection;
-- tracked update/delete affected rows.
+- 提供程序/测试存储接线；
+- 标量值往返；
+- 参数化查询/排序/投影；
+- 跟踪式更新/删除的受影响行数。
 
-No upstream EF relational base suite is inherited. Therefore “the
-specification project passed” means only this narrow slice passed; it must not
-be reported as EF Core relational conformance.
+它不继承任何上游 EF 关系数据库基础测试套件。因此，“规范测试项目通过”仅表示这一
+狭窄切片通过，不得将其报告为 EF Core 关系数据库一致性。
 
-## Dameng references
+## 达梦参考资料
 
-- [DML, `RETURNING`, and `MERGE`](https://eco.dameng.com/document/dm/zh-cn/pm/insertion-deletion-modification.html)
-- [Query clauses and pagination](https://eco.dameng.com/document/dm/zh-cn/pm/check-phrases.html)
-- [DDL and sequences](https://eco.dameng.com/document/dm/zh-cn/pm/definition-statement.html)
-- [Transactions](https://eco.dameng.com/document/dm/zh-cn/pm/management-affairs.html)
+- [DML、`RETURNING` 与 `MERGE`](https://eco.dameng.com/document/dm/zh-cn/pm/insertion-deletion-modification.html)
+- [查询子句与分页](https://eco.dameng.com/document/dm/zh-cn/pm/check-phrases.html)
+- [DDL 与序列](https://eco.dameng.com/document/dm/zh-cn/pm/definition-statement.html)
+- [事务](https://eco.dameng.com/document/dm/zh-cn/pm/management-affairs.html)
 - [`DBMS_LOCK`](https://eco.dameng.com/document/dm/zh-cn/pm/dbms_lock-package.html)
 - [JSON](https://eco.dameng.com/document/dm/zh-cn/pm/json)

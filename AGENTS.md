@@ -1,17 +1,16 @@
-# Repository guidance
+# 仓库指南
 
-## Scope
+## 范围
 
-- Keep `W.EntityFrameworkCore.Dameng` independent of UniWeb, ABP, and
-  applications. `UniWeb.Xin.Dameng` belongs in `uniweb-framework`.
-- Preserve the pinned EF Core 10 / `DM.DmProvider` ranges and lock files unless
-  dependency work is explicitly requested.
-- Do not copy or decompile the official Dameng EF provider. Use public EF
-  contracts, public Dameng documentation, and black-box tests.
-- Do not add reverse-engineering or idempotent-script claims without the
-  corresponding implementation and verification.
+- 文档默认使用中文；仅在保留代码标识、命令、链接、正式名称或行业惯用术语时使用英文。
+- 保持 `W.EntityFrameworkCore.Dameng` 独立于 UniWeb、ABP 和具体应用。
+  `UniWeb.Xin.Dameng` 应归属于 `uniweb-framework`。
+- 除非明确要求依赖项相关工作，否则保留锁定的 EF Core 10 /
+  `DM.DmProvider` 版本范围和锁文件。
+- 不得复制或反编译达梦官方 EF 提供程序。仅使用公开的 EF 契约、达梦公开文档和黑盒测试。
+- 在缺少相应实现和验证时，不得声称支持反向工程或幂等脚本。
 
-## Commands
+## 命令
 
 ```bash
 dotnet restore W.EntityFrameworkCore.Dameng.slnx --locked-mode --disable-parallel
@@ -19,35 +18,31 @@ dotnet build W.EntityFrameworkCore.Dameng.slnx --no-restore
 dotnet test test/W.EntityFrameworkCore.Dameng.Tests/W.EntityFrameworkCore.Dameng.Tests.csproj --no-build
 ```
 
-Real database:
+真实数据库：
 
 ```bash
-export DAMENG_TEST_CONNECTION_STRING='<complete connection string>'
+export DAMENG_TEST_CONNECTION_STRING='<完整连接字符串>'
 dotnet test test/W.EntityFrameworkCore.Dameng.FunctionalTests/W.EntityFrameworkCore.Dameng.FunctionalTests.csproj --no-build
 dotnet test test/W.EntityFrameworkCore.Dameng.Specification.Tests/W.EntityFrameworkCore.Dameng.Specification.Tests.csproj --no-build
 ```
 
-Never commit or print the connection string. A skipped database suite is not
-release evidence.
+绝不能提交或打印连接字符串。跳过数据库测试套件不能作为发布证据。
 
-## Provider invariants
+## 提供程序不变量
 
-- Quote identifiers by component and emit `:name` parameters, never `@name`.
-- Keep Dameng public model APIs provider-prefixed (`UseDameng...`,
-  `GetDameng...`, `SetDameng...`) so multi-provider consumers compile.
-- Reject unsupported or lossy shapes explicitly; do not emit another
-  database's syntax or silently truncate values.
-- Dameng DDL implicitly commits. Generate DDL with the correct transaction
-  suppression, use unique test objects, and clean exact objects in `finally`.
-- The driver has no provider-specific `DbBatch`; preserve singular modification
-  batches until real evidence supports another strategy.
-- Treat driver async as synchronous fallback with limited cancellation.
+- 按组成部分引用标识符，并生成 `:name` 参数，绝不能生成 `@name`。
+- 达梦公共模型 API 必须带有提供程序前缀（`UseDameng...`、`GetDameng...`、
+  `SetDameng...`），以确保多提供程序使用方可以正常编译。
+- 明确拒绝不支持或会造成信息损失的结构；不得生成其他数据库的语法，也不得静默截断值。
+- 达梦 DDL 会隐式提交。生成 DDL 时应正确禁止事务，为测试对象使用唯一名称，并在
+  `finally` 中精确清理对象。
+- 驱动程序没有提供程序专用的 `DbBatch`；在真实证据支持其他策略之前，保持单命令修改批次。
+- 将驱动程序异步视为同步回退，其取消能力有限。
 
-## Evidence
+## 证据
 
-- Update `docs/compatibility.md` when support changes.
-- Distinguish unit SQL/metadata evidence from real-server behavior.
-- The specification project is a four-test smoke slice, not upstream EF
-  relational conformance.
-- Add a focused unit test and, when behavior crosses the driver/server boundary,
-  a real-database regression before marking a capability verified.
+- 支持情况发生变化时更新 `docs/compatibility.md`。
+- 区分单元级 SQL/元数据证据与真实服务器行为证据。
+- 规范测试项目只是包含四项测试的冒烟切片，并非上游 EF 关系数据库一致性测试。
+- 在将某项能力标记为已验证之前，应添加聚焦的单元测试；如果行为跨越驱动程序/服务器边界，
+  还应添加真实数据库回归测试。

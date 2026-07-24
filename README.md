@@ -1,34 +1,29 @@
 # W.EntityFrameworkCore.Dameng
 
-An independently maintained, unofficial Entity Framework Core 10 relational
-provider for Dameng Database. It uses the official `DM.DmProvider` ADO.NET
-driver and has no dependency on UniWeb or ABP.
+这是一个独立维护的非官方达梦数据库 Entity Framework Core 10 关系数据库提供程序。
+它使用官方 `DM.DmProvider` ADO.NET 驱动程序，不依赖 UniWeb 或 ABP。
 
-The current preview baseline targets:
+当前预览版基线面向：
 
-- .NET 10 and Entity Framework Core 10.0.x;
-- Dameng DM8; the automated reference server is 8.1.5.60, not a declared
-  minimum server version;
-- `DM.DmProvider` 8.3.1.47463 through the package's shipped `net9.0` asset;
-- an existing database and user schema. Creating or deleting a physical
-  database is intentionally outside this provider.
+- .NET 10 和 Entity Framework Core 10.0.x；
+- 达梦 DM8；自动化验证使用的参考服务器版本为 8.1.5.60，这并非声明的最低服务器版本；
+- `DM.DmProvider` 8.3.1.47463，使用该包随附的 `net9.0` 资产；
+- 现有数据库和用户模式。本提供程序有意不负责创建或删除物理数据库。
 
-Real-database regressions cover ordinary queries and CRUD, identity and sequence
-generated keys, optimistic concurrency, transactions and savepoints,
-`ExecuteUpdate` / `ExecuteDelete`, common UniWeb data shapes, migrations
-primitives, migration history/locking, Unicode/CJK, and the extended mappings
-listed in [the compatibility matrix](docs/compatibility.md).
-The final reference-server run passed all 33 provider functional tests and all
-4 provider-owned relational smoke tests.
+真实数据库回归测试覆盖常规查询和 CRUD、标识列和序列生成的键、乐观并发、
+事务和保存点、`ExecuteUpdate` / `ExecuteDelete`、常见 UniWeb 数据结构、
+迁移基础操作、迁移历史记录/锁、Unicode/CJK，以及
+[兼容性矩阵](docs/compatibility.md)中列出的扩展映射。
+参考服务器上的最终验证通过了全部 33 项提供程序功能测试和全部 4 项提供程序自有的
+关系数据库冒烟测试。
 
-This is not a complete EF Core provider:
+这并不是一个完整的 EF Core 提供程序：
 
-- reverse engineering (`dotnet ef dbcontext scaffold`) is not implemented;
-- the specification project is a small provider-owned smoke slice using EF
-  test utilities; it does not inherit the upstream EF relational suites and is
-  not a conformance claim.
+- 尚未实现反向工程（`dotnet ef dbcontext scaffold`）；
+- 规范测试项目是使用 EF 测试工具构建的小型自有冒烟测试切片；它不继承上游 EF
+  关系数据库测试套件，也不构成一致性声明。
 
-## Usage
+## 使用方式
 
 ```csharp
 services.AddDbContext<AppDbContext>(options =>
@@ -42,14 +37,12 @@ services.AddDbContext<AppDbContext>(options =>
         }));
 ```
 
-The provider exposes typed and untyped overloads for both connection strings
-and existing `DbConnection` instances. The connection overload without an
-ownership argument leaves disposal to the caller; the explicit
-`contextOwnsConnection` overload is available when EF should own it.
+对于连接字符串和现有 `DbConnection` 实例，提供程序均提供泛型和非泛型重载。
+不含所有权参数的连接重载由调用方负责释放连接；当 EF 应拥有连接时，可使用显式的
+`contextOwnsConnection` 重载。
 
-Dameng-specific value generation uses provider-prefixed APIs so a model can
-reference this package alongside other EF providers without ambiguous
-extension methods:
+达梦专用的值生成使用带提供程序前缀的 API，因此模型可以同时引用本包与其他 EF
+提供程序，而不会产生扩展方法歧义：
 
 ```csharp
 modelBuilder.Entity<Order>()
@@ -61,7 +54,7 @@ modelBuilder.Entity<AuditEvent>()
     .UseDamengSequence("AuditEventIds");
 ```
 
-## Build and test
+## 构建与测试
 
 ```bash
 dotnet restore W.EntityFrameworkCore.Dameng.slnx --locked-mode --disable-parallel
@@ -69,45 +62,37 @@ dotnet build W.EntityFrameworkCore.Dameng.slnx --no-restore
 dotnet test test/W.EntityFrameworkCore.Dameng.Tests/W.EntityFrameworkCore.Dameng.Tests.csproj --no-build
 ```
 
-Real-database tests read exactly one secret environment variable:
+真实数据库测试只读取一个机密环境变量：
 
 ```bash
-export DAMENG_TEST_CONNECTION_STRING='<complete DM.DmProvider connection string>'
+export DAMENG_TEST_CONNECTION_STRING='<完整的 DM.DmProvider 连接字符串>'
 dotnet test test/W.EntityFrameworkCore.Dameng.FunctionalTests/W.EntityFrameworkCore.Dameng.FunctionalTests.csproj --no-build
 dotnet test test/W.EntityFrameworkCore.Dameng.Specification.Tests/W.EntityFrameworkCore.Dameng.Specification.Tests.csproj --no-build
 ```
 
-When the variable is absent, database tests are explicitly skipped. A skipped
-run is not real-database or release evidence. Never commit or print the
-connection string.
+缺少该变量时，数据库测试会被明确跳过。跳过的测试不能作为真实数据库或发布证据。
+绝不能提交或打印连接字符串。
 
-## Important runtime boundaries
+## 重要运行时边界
 
-- Dameng DDL implicitly commits. A migration containing DDL is not atomic, even
-  when EF opened a transaction.
-- EF idempotent scripts use Dameng `EXECUTE IMMEDIATE` and migration-history
-  guards. They are DIsql-style scripts whose DMSQL blocks end with `/`; custom
-  `SqlOperation` text containing a client `/` batch separator is rejected, as
-  are escaped dynamic command literals whose UTF-8 representation exceeds
-  32767 bytes.
-- Unbounded `string` and `byte[]` properties map to `NCLOB` and `BLOB`.
-  Configure a bounded maximum length for keys, indexes, ordering/grouping, and
-  other operations that require ordinary comparable inline values. The actual
-  usable inline row/index length also depends on the database page and row
-  storage configuration.
-- The current driver has no provider-specific `DbBatch`; EF modification
-  commands are deliberately executed as singular batches.
-- The driver's async ADO.NET methods fall back to synchronous implementations
-  in the tested asset, so EF async APIs do not imply non-blocking network I/O
-  or prompt cancellation.
-- `CommandTimeout(...)` configures `DbCommand.CommandTimeout` in seconds. No
-  driver connection-string timeout keyword or unit is asserted by this
-  project; configure connection establishment only from the documentation for
-  the exact installed driver.
+- 达梦 DDL 会隐式提交。即使 EF 已开启事务，包含 DDL 的迁移也不具备原子性。
+- EF 幂等脚本使用达梦 `EXECUTE IMMEDIATE` 和迁移历史记录守卫。它们属于
+  DIsql 风格脚本，其中 DMSQL 块以 `/` 结尾；包含客户端 `/` 批次分隔符的自定义
+  `SqlOperation` 文本会被拒绝，转义后动态命令字面量的 UTF-8 表示超过
+  32767 字节时也会被拒绝。
+- 无界 `string` 和 `byte[]` 属性分别映射为 `NCLOB` 和 `BLOB`。
+  键、索引、排序/分组以及其他需要普通可比较行内值的操作必须配置有限最大长度。
+  实际可用的行内值和索引长度还取决于数据库页面及行存储配置。
+- 当前驱动程序没有提供程序专用的 `DbBatch`；EF 修改命令会有意以单命令批次执行。
+- 在已测试的资产中，驱动程序的异步 ADO.NET 方法会回退到同步实现，因此 EF 异步
+  API 并不意味着非阻塞网络 I/O 或及时取消。
+- `CommandTimeout(...)` 以秒为单位配置 `DbCommand.CommandTimeout`。
+  本项目不对驱动程序连接字符串的超时关键字或单位作任何断言；连接建立相关配置只能
+  依据已安装驱动程序对应版本的文档。
 
-See:
+另请参阅：
 
-- [Compatibility and verification](docs/compatibility.md)
-- [Provider architecture](docs/architecture.md)
-- [`UniWeb.Xin.Dameng` integration contract](docs/uniweb-xin-dameng.md)
-- [Third-party notices](THIRD-PARTY-NOTICES.md)
+- [兼容性与验证](docs/compatibility.md)
+- [提供程序架构](docs/architecture.md)
+- [`UniWeb.Xin.Dameng` 集成契约](docs/uniweb-xin-dameng.md)
+- [第三方声明](THIRD-PARTY-NOTICES.md)

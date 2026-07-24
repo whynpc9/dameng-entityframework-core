@@ -1,36 +1,31 @@
-# EF Core relational specification smoke slice
+# EF Core 关系数据库规范冒烟测试切片
 
-This project references
-`Microsoft.EntityFrameworkCore.Relational.Specification.Tests` 10.0.x for
-shared test utilities, including `RelationalTestStore`. It currently contains
-four provider-owned tests:
+本项目引用 `Microsoft.EntityFrameworkCore.Relational.Specification.Tests`
+10.0.x 以使用共享测试工具，包括 `RelationalTestStore`。目前包含四项提供程序自有测试：
 
-- provider/test-store service wiring;
-- scalar type round trips;
-- parameterized filtering, ordering, and projection;
-- tracked update/delete affected rows.
+- 提供程序/测试存储服务接线；
+- 标量类型往返；
+- 参数化筛选、排序和投影；
+- 跟踪式更新/删除的受影响行数。
 
-It does **not** inherit an upstream EF relational `*TestBase` suite. Passing
-this project proves only the smoke slice above; it is not an EF Core relational
-conformance result.
+它**不**继承上游 EF 关系数据库 `*TestBase` 测试套件。本项目通过只能证明上述冒烟
+测试切片通过，并不构成 EF Core 关系数据库一致性结果。
 
-The live tests target an existing database and current user schema:
+实时测试面向现有数据库和当前用户模式：
 
 ```bash
-export DAMENG_TEST_CONNECTION_STRING='<complete DM.DmProvider connection string>'
+export DAMENG_TEST_CONNECTION_STRING='<完整的 DM.DmProvider 连接字符串>'
 dotnet test test/W.EntityFrameworkCore.Dameng.Specification.Tests/W.EntityFrameworkCore.Dameng.Specification.Tests.csproj
 ```
 
-No test creates or deletes a database, user, or schema. Each live test creates
-a uniquely named table and drops only that table in `finally`. The connection
-string is read from the process environment and must never be logged.
+任何测试都不会创建或删除数据库、用户或模式。每项实时测试都会创建名称唯一的表，
+并在 `finally` 中仅删除该表。连接字符串从进程环境读取，绝不能记录到日志中。
 
-## Skip classification
+## 跳过分类
 
-- `[environment]`: `DAMENG_TEST_CONNECTION_STRING` is absent.
-- `[unsupported]`: Dameng cannot provide the required database capability.
-- `[provider-gap]`: the provider has not implemented the required surface.
+- `[environment]`：缺少 `DAMENG_TEST_CONNECTION_STRING`。
+- `[unsupported]`：达梦无法提供所需的数据库能力。
+- `[provider-gap]`：提供程序尚未实现所需接口。
 
-A provider gap must not be classified as a database limitation. Broad upstream
-base suites should be adopted only as explicit, reviewable slices with
-provider-specific failures and skips accounted for individually.
+提供程序缺口不得归类为数据库限制。采用大范围上游基础测试套件时，应拆分为明确、
+可审查的切片，并逐项说明提供程序特定的失败和跳过原因。

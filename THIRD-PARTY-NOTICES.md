@@ -1,24 +1,19 @@
-# Third-party notices
+# 第三方声明
 
-This project is an independently maintained, unofficial Entity Framework Core
-provider. It is not affiliated with, sponsored by, or endorsed by Dameng or
-Microsoft.
+本项目是独立维护的非官方 Entity Framework Core 提供程序。
+它与达梦或 Microsoft 不存在关联，亦未获得其赞助或认可。
 
-Runtime dependencies:
+运行时依赖项：
 
-- `Microsoft.EntityFrameworkCore.Relational` is licensed under the MIT License.
-- `DM.DmProvider` is distributed by Dameng under Apache License 2.0. The driver
-  remains a separate NuGet dependency and is not embedded or redistributed by
-  this package.
+- `Microsoft.EntityFrameworkCore.Relational` 采用 MIT License。
+- `DM.DmProvider` 由达梦依据 Apache License 2.0 分发。该驱动程序仍是独立的
+  NuGet 依赖项，不会由本包嵌入或再分发。
 
-Implementation references:
+实现参考：
 
-- The provider service layout follows the public provider extension points and
-  MIT-licensed provider examples in the `dotnet/efcore` repository, pinned to
-  EF Core 10.0.10 for API compatibility.
-- FreeSql's MIT-licensed Dameng provider and SqlSugar's public Dameng behavior
-  were used only as feature checklists. Their implementation code is not
-  included.
+- 提供程序服务结构遵循 `dotnet/efcore` 仓库中的公开提供程序扩展点及采用
+  MIT 许可证的提供程序示例，并锁定到 EF Core 10.0.10 以保持 API 兼容性。
+- FreeSql 采用 MIT 许可证的达梦提供程序和 SqlSugar 公开的达梦行为仅用作功能检查清单。
+  本项目不包含它们的实现代码。
 
-Dameng database server software, installation media, and license keys are not
-part of this project.
+达梦数据库服务器软件、安装介质及许可证密钥均不属于本项目。
