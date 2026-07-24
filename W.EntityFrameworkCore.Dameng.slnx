@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/W.EntityFrameworkCore.Dameng/W.EntityFrameworkCore.Dameng.csproj" />
+  </Folder>
+  <Folder Name="/test/">
+    <Project Path="test/W.EntityFrameworkCore.Dameng.FunctionalTests/W.EntityFrameworkCore.Dameng.FunctionalTests.csproj" />
+    <Project Path="test/W.EntityFrameworkCore.Dameng.Specification.Tests/W.EntityFrameworkCore.Dameng.Specification.Tests.csproj" />
+    <Project Path="test/W.EntityFrameworkCore.Dameng.Tests/W.EntityFrameworkCore.Dameng.Tests.csproj" />
+  </Folder>
+</Solution>
